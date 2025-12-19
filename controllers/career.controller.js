@@ -1,5 +1,7 @@
 import JobApplication from "../models/career.models.js";
 import cloudinary from "../config/cloudinary.js";
+import fs from "fs";
+import path from "path";
 
 export const create = async (req, res) => {
   try {
@@ -12,6 +14,7 @@ export const create = async (req, res) => {
       currentLocation
     } = req.body;
 
+    // Validation
     if (
       !name ||
       !email ||
@@ -23,6 +26,7 @@ export const create = async (req, res) => {
       return res.status(400).json({ message: "All fields are required" });
     }
 
+    // Email validation
     if (
       !email.includes("@") ||
       !email.includes(".") ||
@@ -33,29 +37,18 @@ export const create = async (req, res) => {
       return res.status(400).json({ message: "Invalid email address" });
     }
 
-    if (
-      mobile.length !== 10 ||
-      isNaN(mobile) ||
-      Number(mobile[0]) < 6
-    ) {
+    // Mobile validation
+    if (mobile.length !== 10 || isNaN(mobile) || Number(mobile[0]) < 6) {
       return res.status(400).json({ message: "Invalid mobile number" });
     }
 
+    // Resume required
     if (!req.file) {
-      return res.status(400).json({ message: "Resume is required" });
+      return res.status(400).json({ message: "Resume (PDF) is required" });
     }
 
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
-    if (!allowedTypes.includes(req.file.mimetype)) {
-      return res.status(400).json({ message: "Only JPG, JPEG, PNG images and PDF files are allowed" });
-    }
-
-    const resourceType = req.file.mimetype === 'application/pdf' ? 'raw' : 'image';
-    
-    const result = await cloudinary.uploader.upload(req.file.path, {
-      folder: "job_resumes",
-      resource_type: resourceType
-    });
+    // Local file info
+    const resumeUrl = `${req.protocol}://${req.get("host")}/upload/${req.file.filename}`;
 
     const data = await JobApplication.create({
       name,
@@ -65,23 +58,23 @@ export const create = async (req, res) => {
       experience,
       currentLocation,
       resume: {
-        url: result.secure_url,
-        public_id: result.public_id
+        filename: req.file.filename,
+        path: resumeUrl
       }
     });
-
 
     return res.status(201).json({
       message: "Application submitted successfully",
       data
     });
   } catch (error) {
+    console.error("Upload Error:", error);
     return res.status(500).json({
-      message: "Internal server error",
-      error: error.message
+      message: error.message || "Internal server error"
     });
   }
 };
+
 
 
 export const getAll = async (req, res) => {
@@ -96,6 +89,8 @@ export const getAll = async (req, res) => {
     });
   }
 };
+
+
 
 export const update = async (req, res) => {
   try {
@@ -114,7 +109,7 @@ export const update = async (req, res) => {
       return res.status(404).json({ message: "Application not found" });
     }
 
-    // 🔹 Update normal fields
+    // 🔹 Update text fields
     if (name) application.name = name;
     if (email) application.email = email;
     if (mobile) application.mobile = mobile;
@@ -122,31 +117,23 @@ export const update = async (req, res) => {
     if (experience) application.experience = experience;
     if (currentLocation) application.currentLocation = currentLocation;
 
-    // 🔹 Resume update
+    // 🔹 Resume update (LOCAL)
     if (req.file) {
-  // delete old resume
-  if (application.resume?.public_id) {
-    const oldResourceType = req.file.mimetype === 'application/pdf' ? 'raw' : 'image';
-    await cloudinary.uploader.destroy(
-      application.resume.public_id,
-      { resource_type: oldResourceType }
-    );
-  }
+      // delete old file
+      if (application.resume?.filename) {
+        const oldPath = path.join("uploads", application.resume.filename);
+        if (fs.existsSync(oldPath)) {
+          fs.unlinkSync(oldPath);
+        }
+      }
 
-  // upload new resume
-  const resourceType = req.file.mimetype === 'application/pdf' ? 'raw' : 'image';
-  
-  const result = await cloudinary.uploader.upload(req.file.path, {
-    folder: "job_resumes",
-    resource_type: resourceType
-  });
+      const resumeUrl = `${req.protocol}://${req.get("host")}/upload/${req.file.filename}`;
 
-  application.resume = {
-    url: result.secure_url,
-    public_id: result.public_id
-  };
-}
-
+      application.resume = {
+        filename: req.file.filename,
+        path: resumeUrl
+      };
+    }
 
     await application.save();
 
@@ -162,6 +149,8 @@ export const update = async (req, res) => {
   }
 };
 
+
+
 export const remove = async (req, res) => {
   try {
     const { id } = req.params;
@@ -171,14 +160,13 @@ export const remove = async (req, res) => {
       return res.status(404).json({ message: "Application not found" });
     }
 
-    // 🔴 Delete resume from Cloudinary
-    if (application.resume?.public_id) {
-  await cloudinary.uploader.destroy(
-    application.resume.public_id,
-    { resource_type: "raw" }
-  );
-}
-
+    // 🔴 Delete local resume file
+    if (application.resume?.filename) {
+      const filePath = path.join("uploads", application.resume.filename);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
 
     await JobApplication.findByIdAndDelete(id);
 
@@ -192,3 +180,4 @@ export const remove = async (req, res) => {
     });
   }
 };
+

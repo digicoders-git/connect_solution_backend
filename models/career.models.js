@@ -8,14 +8,15 @@ const careerSchema = new mongoose.Schema(
     positionAppliedFor: { type: String, required: true },
     experience: { type: String, required: true },
     currentLocation: { type: String, required: true },
-    resume: {
-      url: { type: String, required: true },
-      public_id: { type: String, required: true }
-    }
 
+    resume: {
+      filename: { type: String, required: true },
+      path: { type: String, required: true }
+    }
   },
   { timestamps: true }
 );
+
 
 const JobApplication = mongoose.model("JobApplication", careerSchema);
 export default JobApplication;

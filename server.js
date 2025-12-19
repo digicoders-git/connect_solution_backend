@@ -7,6 +7,8 @@ import { adminRoute } from "./routes/admin.routes.js";
 import cookieParser from "cookie-parser";
 import { contactRoute } from "./routes/contact.routes.js";
 import careerRouter from "./routes/career.routes.js";
+import path from "path";
+import { fileURLToPath } from "url";
 
 const port = process.env.PORT || 5000;
 
@@ -19,6 +21,12 @@ app.use(cookieParser())
 app.use('/admin',adminRoute)
 app.use('/contact',contactRoute)
 app.use('/career',careerRouter)
+
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+app.use("/upload", express.static(path.join(__dirname, "uploads")));
+
 app.use((req, res) => {
   res.status(404).json({
     success: false,

@@ -1,5 +1,6 @@
 import express from "express";
-import upload from '../middleware/multer.js'
+import {upload} from '../middleware/multerPdf.js'
+// import multer from "multer";
 import { create, getAll, remove, update } from "../controllers/career.controller.js";
 
 const careerRouter = express.Router();
