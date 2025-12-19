@@ -9,6 +9,7 @@ import { contactRoute } from "./routes/contact.routes.js";
 import careerRouter from "./routes/career.routes.js";
 import path from "path";
 import { fileURLToPath } from "url";
+import consultations from "./routes/consultation.routes.js";
 
 const port = process.env.PORT || 5000;
 
@@ -21,6 +22,7 @@ app.use(cookieParser())
 app.use('/admin',adminRoute)
 app.use('/contact',contactRoute)
 app.use('/career',careerRouter)
+app.use('/consultation',consultations)
 
 
 const __filename = fileURLToPath(import.meta.url);
